@@ -18,12 +18,33 @@ extern "C" {
     fn log_u32(s: u32);
 
     #[wasm_bindgen(js_namespace = console, js_name = log)]
+    fn log_f64(s: f64);
+
+    #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_many(a: &str, b: &str);
+}
+
+
+fn hit_sphere(center: Vec3, radius: f64, ray: Ray) -> bool
+{
+    let oc = ray.origin() - center;
+    let a = Vec3::dot(ray.direction(), ray.direction());
+    let b = 2.0 * Vec3::dot(oc, ray.direction());
+    let c = Vec3::dot(oc, oc) - radius * radius;
+    let discriminant = b * b - 4.0 * a * c;
+    
+    return discriminant > 0.0;
 }
 
 
 fn ray_color(ray: Ray) ->Vec<u8>
 {
+    let center = Vec3{x: 0.0, y: 0.0, z: -1.0};
+    if hit_sphere(center, 0.5, ray.clone())
+    {
+        return vec![255, 0, 0, 255];
+    }
+
     let unit_direction = Vec3::get_unit_vector(ray.direction());
     let t = 0.5 * (unit_direction.y + 1.0);
     let color = (1.0 - t) * Vec3{x: 1.0, y: 1.0, z: 1.0} + t * Vec3{x: 0.5, y: 0.7, z: 1.0};
