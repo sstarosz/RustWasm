@@ -9,8 +9,7 @@ pub struct Vec3 {
     pub z: f64
 }
 
-impl ops::Add for Vec3
-{
+impl ops::Add for Vec3{
     type Output = Self;
     fn add(self, other: Vec3) -> Self
     {
@@ -20,8 +19,7 @@ impl ops::Add for Vec3
     }
 }
 
-impl ops::AddAssign for Vec3
-{
+impl ops::AddAssign for Vec3{
     fn add_assign(&mut self, other: Vec3) 
     {
         *self = Vec3 { x: self.x + other.x,
@@ -62,8 +60,7 @@ impl ops::Mul<f64> for Vec3 {
     }  
 }
 
-impl ops::MulAssign<f64> for Vec3
-{
+impl ops::MulAssign<f64> for Vec3{
     fn mul_assign(&mut self, scale: f64) {
         self.x *= scale;
         self.y *= scale;
