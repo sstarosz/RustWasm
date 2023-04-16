@@ -109,8 +109,12 @@ impl ops::Sub for Vec3 {
    }
 }
 
-
 impl Vec3 {
+
+    pub fn new(x: f64, y: f64, z:f64) ->Vec3
+    {
+        Vec3 { x: x, y: y, z: z }
+    }
 
     pub fn dot(u: Vec3, v:Vec3 ) -> f64 {
          u.x * v.x + u.y * v.y + u.z * v.z

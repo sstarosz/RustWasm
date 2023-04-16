@@ -1,14 +1,20 @@
 mod vec3;
 mod ray;
 mod hittable_object;
+mod hitable_list;
 mod sphere;
 
+
+use hittable_object::HitRecord;
 use ray::Ray;
 use vec3::Vec3;
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::Clamped;
 use web_sys::ImageData;
+use hittable_object::HittableObject;
+use hitable_list::HitableList;
+use sphere::Sphere;
 
 #[wasm_bindgen]
 extern "C" {
@@ -26,52 +32,22 @@ extern "C" {
     fn log_many(a: &str, b: &str);
 }
 
-
-fn hit_sphere(center: Vec3, radius: f64, ray: &Ray) -> f64
+fn ray_color<T: HittableObject>(ray: &Ray,  word: &HitableList<T>) ->Vec<u8>
 {
-    let oc = ray.origin() - center;
-
-   
-    let a = ray.direction().length_squared();
-    let half_b = Vec3::dot(oc, ray.direction());
-    let c = oc.length_squared() - radius * radius;
-    let discriminant = half_b*half_b - a * c;
-
-
-    if ( discriminant < 0.0)
+    let mut record = HitRecord::default();
+    if word.hit(&ray, 0.0, f64::INFINITY, &mut record)
     {
-        return -1.0;
-    }
-    else
-    {
-        return (-half_b - f64::sqrt(discriminant)) /  a;
-    }
-}
-
-
-fn ray_color(ray: &Ray) ->Vec<u8>
-{
-    let t = hit_sphere(Vec3{x: 0.0, y: 0.0, z: -1.0}, 0.5, ray);
-    if t > 0.0
-    {
-        let n = Vec3::get_unit_vector(ray.at(t) - Vec3{x: 0.0, y: 0.0, z: -1.0});
-        let color =  0.5 * Vec3{x:n.x + 1.0,y: n.y + 1.0,z: n.z + 1.0};
-
-        let ir = (color.x * 255.999) as u8;
-        let ig = (color.y * 255.999) as u8;
-        let ib = (color.z * 255.999) as u8;
+        let ir = ((0.5 * (record.normal.x + 1.0)) * 255.999) as u8;
+        let ig = ((0.5 * (record.normal.y + 1.0)) * 255.999) as u8;
+        let ib = ((0.5 * (record.normal.z + 1.0)) * 255.999) as u8;
         let ia = 255;
-    
+
         return vec![ir, ig, ib, ia];
     }
-    //{
-    //    return vec![255, 0, 0, 255];
-    //}
 
     let unit_direction = Vec3::get_unit_vector(ray.direction());
     let t = 0.5 * (unit_direction.y + 1.0);
     let color = (1.0 - t) * Vec3{x: 1.0, y: 1.0, z: 1.0} + t * Vec3{x: 0.5, y: 0.7, z: 1.0};
-
 
     let ir = (color.x * 255.999) as u8;
     let ig = (color.y * 255.999) as u8;
@@ -82,7 +58,8 @@ fn ray_color(ray: &Ray) ->Vec<u8>
 }
 
 
-fn render_image(image_width: u32, image_height: u32, camera: Camera) -> Vec<u8>
+
+fn render_image<T: HittableObject>(image_width: u32, image_height: u32, camera: Camera, word: &HitableList<T>) -> Vec<u8>
 {
     let mut image = Vec::new();
 
@@ -95,7 +72,7 @@ fn render_image(image_width: u32, image_height: u32, camera: Camera) -> Vec<u8>
 
             let ray = Ray{origin: camera.origin, direction: camera.lower_left_corner + (u * camera.horizontal) + (v * camera.vertical) - camera.origin};
 
-            image.extend(ray_color(&ray));
+            image.extend(ray_color(&ray, &word));
         }
     }
 
@@ -108,9 +85,9 @@ fn render_image(image_width: u32, image_height: u32, camera: Camera) -> Vec<u8>
 }
 
 
-fn get_image(image_width: u32, image_height: u32, camera: Camera) ->Vec<u8>
+fn get_image<T: HittableObject>(image_width: u32, image_height: u32, camera: Camera, word: &HitableList<T>) ->Vec<u8>
 {
-    return  render_image(image_width,image_height, camera );
+    return  render_image(image_width,image_height, camera, &word);
 }
 
 
@@ -151,11 +128,16 @@ pub fn start() {
     log_u32(image_width);
     log_u32(image_height);
 
+    //World
+    let mut word = HitableList::new();
+    word.add(Sphere { center: Vec3{x: 0.0, y: 0.0, z: -1.0}, radius: 0.5});
+    word.add(Sphere { center: Vec3{x: 0.0, y: -100.5, z: -1.0}, radius: 100.0});
 
     //Camera
     let viewport_height = 2.0;
     let viewport_width = aspect_radio * viewport_height;
     let focal_lenght = 1.0;
+
 
     let origin = Vec3{x: 0.0, y: 0.0, z: 0.0};
     let horizontal = Vec3{x: viewport_width, y: 0.0, z: 0.0};
@@ -164,8 +146,8 @@ pub fn start() {
 
     let camera = Camera{origin: origin, horizontal:horizontal, vertical:vertical, lower_left_corner: lower_left_corner};
 
-
-    let mut data = get_image(image_width, image_height, camera);
+    //render
+    let mut data = get_image(image_width, image_height, camera, &word);
 
     let data = ImageData::new_with_u8_clamped_array_and_sh(Clamped(&mut data), image_width, image_height).unwrap();
     context.put_image_data(&data, 0.0, 0.0).unwrap();
